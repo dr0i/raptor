@@ -298,7 +298,6 @@ raptor_turtle_expand_name_escapes(unsigned char *name,
   /* calculate output string size */
   len = d - name;
   
-  /* string gets owned by the stringbuffer after this */
   return len;
 }
 
