@@ -449,14 +449,20 @@ raptor_ntriples_term(raptor_parser* rdf_parser,
       case '\\':
         *dest++ = c;
         break;
+      case 't':
+        *dest++ = '\t';
+        break;
+      case 'b':
+        *dest++ = '\b';
+        break;
       case 'n':
         *dest++ = '\n';
         break;
       case 'r':
         *dest++ = '\r';
         break;
-      case 't':
-        *dest++ = '\t';
+      case 'f':
+        *dest++ = '\f';
         break;
       case 'u':
       case 'U':
