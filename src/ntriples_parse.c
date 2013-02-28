@@ -75,6 +75,8 @@ struct raptor_ntriples_parser_context_s {
   int is_nquads;
 
   int literal_graph_warning;
+
+  int allow_utf8;
 };
 
 
@@ -97,6 +99,8 @@ raptor_ntriples_parse_init(raptor_parser* rdf_parser, const char *name)
   ntriples_parser = (raptor_ntriples_parser_context*)rdf_parser->context;
 
   raptor_statement_init(&ntriples_parser->statement, rdf_parser->world);
+
+  ntriples_parser->allow_utf8 = 1;
 
   if(!strcmp(name, "nquads"))
     ntriples_parser->is_nquads = 1;
@@ -639,7 +643,8 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
         if(raptor_ntriples_term(rdf_parser,
                                 (const unsigned char**)&p, 
                                 dest, &len, &term_length, 
-                                '>', RAPTOR_TERM_CLASS_URI, 0)) {
+                                '>', RAPTOR_TERM_CLASS_URI, 
+                                ntriples_parser->allow_utf8)) {
           rc = 1;
           goto cleanup;
         }
@@ -658,7 +663,8 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
         if(raptor_ntriples_term(rdf_parser,
                                 (const unsigned char**)&p,
                                 dest, &len, &term_length,
-                                '"', RAPTOR_TERM_CLASS_STRING, 0)) {
+                                '"', RAPTOR_TERM_CLASS_STRING, 
+                                ntriples_parser->allow_utf8)) {
           rc = 1;
           goto cleanup;
         }
@@ -684,7 +690,8 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
           if(raptor_ntriples_term(rdf_parser,
                                   (const unsigned char**)&p,
                                   object_literal_language, &len, NULL,
-                                  '\0', RAPTOR_TERM_CLASS_LANGUAGE, 0)) {
+                                  '\0', RAPTOR_TERM_CLASS_LANGUAGE,
+                                  ntriples_parser->allow_utf8)) {
             rc = 1;
             goto cleanup;
           }
@@ -713,7 +720,8 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
           if(raptor_ntriples_term(rdf_parser,
                                   (const unsigned char**)&p,
                                   object_literal_datatype, &len, NULL,
-                                  '>', RAPTOR_TERM_CLASS_URI, 0)) {
+                                  '>', RAPTOR_TERM_CLASS_URI,
+                                  ntriples_parser->allow_utf8)) {
             rc = 1;
             goto cleanup;
           }
@@ -754,7 +762,8 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
         if(raptor_ntriples_term(rdf_parser,
                                 (const unsigned char**)&p,
                                 dest, &len, &term_length,
-                                '\0', RAPTOR_TERM_CLASS_BNODEID, 0)) {
+                                '\0', RAPTOR_TERM_CLASS_BNODEID,
+                                ntriples_parser->allow_utf8)) {
           rc = 1;
           goto cleanup;
         }

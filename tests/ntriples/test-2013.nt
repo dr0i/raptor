@@ -4,4 +4,5 @@
 # 
 # comment lines
          	
-<http://example.org/resource1> <http://example.org/property> <http://example.org/resource2> .  # comment at end of line
+<http://example.org/resource1> <http://example.org/property1> <http://example.org/resource2> .  # comment at end of line
+<http://example.org/resource1> <http://example.org/property2> "Cette section définit un format facile à analyser la ligne à base de sous-ensemble de tortue nommée N-Triples" .

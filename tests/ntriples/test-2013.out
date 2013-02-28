@@ -1,1 +1,2 @@
-<http://example.org/resource1> <http://example.org/property> <http://example.org/resource2> .
+<http://example.org/resource1> <http://example.org/property1> <http://example.org/resource2> .
+<http://example.org/resource1> <http://example.org/property2> "Cette section d\u00E9finit un format facile \u00E0 analyser la ligne \u00E0 base de sous-ensemble de tortue nomm\u00E9e N-Triples" .
