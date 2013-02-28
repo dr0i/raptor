@@ -591,34 +591,14 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
   if(*p == '#')
     return 0;
   
-  /* Remove trailing spaces */
-  while(len > 0 && isspace((int)p[len-1])) {
-    p[len-1] = '\0';
-    len--;
-  }
-
-  /* can't be empty now - that would have been caught above */
-  
-  /* Check for terminating '.' */
-  if(p[len-1] != '.') {
-    /* Move current location to point to problem */
-    rdf_parser->locator.column += RAPTOR_BAD_CAST(int, len - 2);
-    rdf_parser->locator.byte += RAPTOR_BAD_CAST(int, len - 2);
-    raptor_parser_error(rdf_parser, "Missing . at end of line");
-    return 0;
-  }
-
-  p[len-1] = '\0';
-  len--;
-
-
   /* Must be triple/quad */
 
   for(i = 0; i < max_terms; i++) {
-    if(!len) {
+    if(*p == '.') {
       /* context is optional in nquads */
       if (i == 3)
 	break;
+
       raptor_parser_error(rdf_parser, "Unexpected end of line");
       goto cleanup;
     }
@@ -820,11 +800,11 @@ raptor_ntriples_parse_line(raptor_parser* rdf_parser,
 #endif    
   }
 
-  if(len) {
-    raptor_parser_error(rdf_parser, "Junk before terminating \".\"");
+  /* Check for terminating '.' */
+  if(*p != '.') {
+    raptor_parser_error(rdf_parser, "Missing . at end of line");
     return 0;
   }
-  
 
   if(object_literal_language) {
     unsigned char *q;

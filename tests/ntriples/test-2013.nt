@@ -1,0 +1,7 @@
+#
+# N-Triples 2013 Test Cases
+# Dave Beckett - http://purl.org/net/dajobe/
+# 
+# comment lines
+         	
+<http://example.org/resource1> <http://example.org/property> <http://example.org/resource2> .  # comment at end of line

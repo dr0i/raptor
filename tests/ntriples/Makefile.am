@@ -21,7 +21,7 @@
 # 
 # 
 
-NT_TEST_FILES=test.nt
+NT_TEST_FILES = test.nt test-2013.nt
 
 NT_OUT_FILES=test.out
 
