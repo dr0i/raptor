@@ -184,7 +184,7 @@ raptor_stringbuffer_append_turtle_string(raptor_stringbuffer* stringbuffer,
  * @error_handler: error handling function
  * @error_data: error handler data
  *
- * Expands Turtle escapes for the given name
+ * Expands Turtle escapes for the given name inline
  *
  * The passed in string is handled according to the Turtle string
  * escape rules giving a UTF-8 encoded output of the Unicode codepoints.
@@ -194,7 +194,7 @@ raptor_stringbuffer_append_turtle_string(raptor_stringbuffer* stringbuffer,
  *
  * Turtle 2013 allows \ with -_~.!$&\'()*+,;=/?#@%
  *
- * Return value: new length or 0 on failure
+ * Return value: new length of @name or 0 on failure
  **/
 size_t
 raptor_turtle_expand_name_escapes(unsigned char *name,
