@@ -46,6 +46,8 @@
  */
 typedef struct {
   int is_nquads;
+
+  int is_ntriples_2013;
 } raptor_ntriples_serializer_context;
 
 
@@ -58,6 +60,7 @@ raptor_ntriples_serialize_init(raptor_serializer* serializer, const char *name)
 
   ntriples_serializer = (raptor_ntriples_serializer_context*)serializer->context;
   ntriples_serializer->is_nquads = !strcmp(name, "nquads");
+  ntriples_serializer->is_ntriples_2013 = !strcmp(name, "ntriples-2013");
 
   return 0;
 }
@@ -285,7 +288,7 @@ raptor_ntriples_serialize_finish_factory(raptor_serializer_factory* factory)
 
 
 #ifdef RAPTOR_SERIALIZER_NTRIPLES
-static const char* const ntriples_names[2] = { "ntriples", NULL};
+static const char* const ntriples_names[3] = { "ntriples", "ntriples-2013", NULL};
 
 static const char* const ntriples_uri_strings[3] = {
   "http://www.w3.org/ns/formats/N-Triples",
