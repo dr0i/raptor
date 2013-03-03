@@ -121,7 +121,7 @@ static int raptor_turtle_serialize_end(raptor_serializer* serializer);
 static void raptor_turtle_serialize_finish_factory(raptor_serializer_factory* factory);
 
 
-static int
+int
 raptor_turtle_is_legal_turtle_qname(raptor_qname* qname)
 {
   const char* prefix_name;
@@ -1199,6 +1199,9 @@ raptor_init_serializer_turtle(raptor_world* world)
  *
  * Write #raptor_uri to a stream in turtle syntax (using QNames).
  *
+ * Note: This creates and destroys several internal objects for each
+ * call so for more efficient writing, create a turtle serializer.
+ *
  * Return value: non-0 on failure
  */
 int
@@ -1208,33 +1211,18 @@ raptor_uri_turtle_write(raptor_world *world,
                         raptor_namespace_stack *nstack,
                         raptor_uri *base_uri)
 {
-  raptor_qname* qname;
+  int rc;
   raptor_turtle_writer* turtle_writer;
   
   turtle_writer = raptor_new_turtle_writer(world, base_uri, 0, nstack, iostr);
-  if(!turtle_writer) {
+  if(!turtle_writer)
     return 1;
-  }
-  
-  qname = raptor_new_qname_from_namespace_uri(nstack, uri, 10);
 
-  /* XML Names allow leading '_' and '.' anywhere but Turtle does not */
-  if(qname && !raptor_turtle_is_legal_turtle_qname(qname)) {
-    raptor_free_qname(qname);
-    qname = NULL;
-  }
-
-  if(qname) {
-    raptor_turtle_writer_qname(turtle_writer, qname);
-    
-    raptor_free_qname(qname);
-  } else {
-    raptor_turtle_writer_reference(turtle_writer, uri);
-  }
+  rc = raptor_turtle_writer_uri(turtle_writer, uri);
   
   raptor_free_turtle_writer(turtle_writer);
   
-  return 0;
+  return rc;
 }
 
 
@@ -1248,6 +1236,9 @@ raptor_uri_turtle_write(raptor_world *world,
  *
  * Write #raptor_term to a stream in turtle syntax (using QNames).
  *
+ * Note: This creates and destroys several internal objects for each
+ * call so for more efficient writing, create a turtle serializer.
+ *
  * Return value: non-0 on failure
  */
 int
@@ -1256,26 +1247,15 @@ raptor_term_turtle_write(raptor_iostream* iostr,
                          raptor_namespace_stack *nstack,
                          raptor_uri *base_uri)
 {
-  int rc = 0;
+  int rc;
   raptor_turtle_writer* turtle_writer;
   
-  turtle_writer = raptor_new_turtle_writer(term->world, base_uri, 0, nstack, iostr);
-  if(!turtle_writer) {
+  turtle_writer = raptor_new_turtle_writer(term->world, base_uri, 0, nstack,
+                                           iostr);
+  if(!turtle_writer)
     return 1;
-  }
-  
-  if(term->type == RAPTOR_TERM_TYPE_URI) {
-    rc = raptor_uri_turtle_write(term->world, iostr, term->value.uri, nstack, base_uri);
-  } else if(term->type == RAPTOR_TERM_TYPE_LITERAL) {
-    raptor_turtle_writer_literal(turtle_writer, nstack,
-                                 term->value.literal.string,
-                                 term->value.literal.language, 
-                                 term->value.literal.datatype);
-  } else if(term->type == RAPTOR_TERM_TYPE_BLANK) {
-    raptor_bnodeid_ntriples_write(term->value.blank.string, term->value.blank.string_len, iostr);
-  } else {
-    rc = 2;
-  }
+
+  rc = raptor_turtle_writer_term(turtle_writer, term);
   
   raptor_free_turtle_writer(turtle_writer);
   
@@ -1295,27 +1275,40 @@ raptor_term_turtle_write(raptor_iostream* iostr,
  * Convert #raptor_uri to a string.
  * Caller has responsibility to free the string.
  *
+ * Note: This creates and destroys several internal objects for each
+ * call so for more efficient writing, create a turtle serializer.
+ *
  * Return value: the new string or NULL on failure.  The length of
  * the new string is returned in *@len_p if len_p is not NULL.
  */
 unsigned char*
 raptor_uri_to_turtle_counted_string(raptor_world *world,
-                            raptor_uri* uri, 
-                            raptor_namespace_stack *nstack,
-                            raptor_uri *base_uri,
-                            size_t *len_p)
+                                    raptor_uri* uri, 
+                                    raptor_namespace_stack *nstack,
+                                    raptor_uri *base_uri,
+                                    size_t *len_p)
 {
-  int rc;
+  int rc = 1;
   raptor_iostream* iostr;
-  unsigned char *s;
+  unsigned char *s = NULL;
+  raptor_turtle_writer* turtle_writer;
+
   iostr = raptor_new_iostream_to_string(world,
                                         (void**)&s, len_p, malloc);
   if(!iostr)
     return NULL;
+  
+  turtle_writer = raptor_new_turtle_writer(world, base_uri, 0, nstack, iostr);
+  if(!turtle_writer)
+    goto tidy;
 
-  rc = raptor_uri_turtle_write(world, iostr, uri, nstack, base_uri);
+  rc = raptor_turtle_writer_uri(turtle_writer, uri);
 
+  raptor_free_turtle_writer(turtle_writer);
+
+  tidy:
   raptor_free_iostream(iostr);
+
   if(rc) {
     free(s);
     s = NULL;
@@ -1333,6 +1326,9 @@ raptor_uri_to_turtle_counted_string(raptor_world *world,
  *
  * Convert #raptor_uri to a string.
  * Caller has responsibility to free the string.
+ *
+ * Note: This creates and destroys several internal objects for each
+ * call so for more efficient writing, create a turtle serializer.
  *
  * Return value: the new string or NULL on failure.
  */
@@ -1357,14 +1353,17 @@ raptor_uri_to_turtle_string(raptor_world *world,
  * Convert #raptor_term to a string.
  * Caller has responsibility to free the string.
  *
+ * Note: This creates and destroys several internal objects for each
+ * call so for more efficient writing, create a turtle serializer.
+ *
  * Return value: the new string or NULL on failure.  The length of
  * the new string is returned in *@len_p if len_p is not NULL.
  */
 unsigned char*
 raptor_term_to_turtle_counted_string(raptor_term* term, 
-                             raptor_namespace_stack *nstack,
-                             raptor_uri *base_uri,
-                             size_t *len_p)
+                                     raptor_namespace_stack *nstack,
+                                     raptor_uri *base_uri,
+                                     size_t *len_p)
 {
   int rc;
   raptor_iostream* iostr;

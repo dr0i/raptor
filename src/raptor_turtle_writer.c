@@ -327,49 +327,9 @@ int
 raptor_turtle_writer_reference(raptor_turtle_writer* turtle_writer, 
                                raptor_uri* uri)
 {
-  unsigned char* uri_str;
-  size_t len;
-  
-  uri_str = raptor_uri_to_relative_counted_uri_string(turtle_writer->base_uri, uri, &len);
-
-  raptor_iostream_write_byte('<', turtle_writer->iostr);
-  if(uri_str) {
-    unsigned char* string = uri_str;
-    unsigned char c;
-
-    for(; (c=*string); string++, len--) {
-      int unichar_len;
-
-      /* Must escape #x00-#x20<>\"{}|^` */
-      if(c <= 0x20 ||
-         c == '<' || c == '>' || c == '\\' || c == '"' || 
-         c == '{' || c == '}' || c == '|' || c == '^' || c == '`') {
-        raptor_iostream_counted_string_write("\\u", 2, turtle_writer->iostr);
-        raptor_iostream_hexadecimal_write(c, 4, turtle_writer->iostr);
-        continue;
-      } else if(c < 0x80) {
-        raptor_iostream_write_byte(c, turtle_writer->iostr);
-        continue;
-      }
-
-      /* It is unicode */
-      unichar_len = raptor_unicode_utf8_string_get_char(string, len, NULL);
-      if(unichar_len < 0 || RAPTOR_GOOD_CAST(size_t, unichar_len) > len) {
-        /* UTF-8 encoding had an error or ended in the middle of a string */
-        RAPTOR_FREE(char*, uri_str);
-        return 1;
-      }
-      
-      raptor_iostream_counted_string_write(string, unichar_len,
-                                           turtle_writer->iostr);
-      unichar_len--; /* since loop does len-- */
-      string += unichar_len; len -= unichar_len;
-    }
-  }
-  raptor_iostream_write_byte('>', turtle_writer->iostr);
-
-  RAPTOR_FREE(char*, uri_str);
-  return 0;
+  return raptor_uri_escaped_write(uri, turtle_writer->base_uri, 
+                                  RAPTOR_ESCAPED_WRITE_TURTLE_URI,
+                                  turtle_writer->iostr);
 }
 
 
@@ -401,114 +361,6 @@ raptor_turtle_writer_qname(raptor_turtle_writer* turtle_writer,
 
 
 /**
- * raptor_string_python_write:
- * @string: UTF-8 string to write
- * @len: length of UTF-8 string
- * @delim: Terminating delimiter character for string (such as " or >)
- * or \0 for no escaping.
- * @flags: flags 0=N-Triples mode, 1=Turtle (allow raw UTF-8), 2=Turtle long string (allow raw UTF-8), 3=JSON
- * @iostr: #raptor_iostream to write to
- *
- * Write a UTF-8 string using Python-style escapes (N-Triples, Turtle, JSON) to an iostream.
- * 
- * Return value: non-0 on failure such as bad UTF-8 encoding.
- **/
-int
-raptor_string_python_write(const unsigned char *string,
-                           size_t len,
-                           const char delim,
-                           int flags,
-                           raptor_iostream *iostr)
-{
-  unsigned char c;
-  int unichar_len;
-  raptor_unichar unichar;
-
-  if(flags < 0 || flags > 3)
-    return 1;
-  
-  for(; (c=*string); string++, len--) {
-    if((delim && c == delim && (delim == '\'' || delim == '"')) ||
-       c == '\\') {
-      raptor_iostream_write_byte('\\', iostr);
-      raptor_iostream_write_byte(c, iostr);
-      continue;
-    }
-    if(delim && c == delim) {
-      raptor_iostream_counted_string_write("\\u", 2, iostr);
-      raptor_iostream_hexadecimal_write(c, 4, iostr);
-      continue;
-    }
-    
-    if(flags != 2) {
-      /* N-Triples, Turtle or JSON */
-
-      /* Note: NTriples is ASCII */
-      if(c == 0x09) {
-        raptor_iostream_counted_string_write("\\t", 2, iostr);
-        continue;
-      } else if((flags == 3) && c == 0x08) {
-        /* JSON has \b for backspace */
-        raptor_iostream_counted_string_write("\\b", 2, iostr);
-        continue;
-      } else if(c == 0x0a) {
-        raptor_iostream_counted_string_write("\\n", 2, iostr);
-        continue;
-      } else if((flags == 3) && c == 0x0b) {
-        /* JSON has \f for formfeed */
-        raptor_iostream_counted_string_write("\\f", 2, iostr);
-        continue;
-      } else if(c == 0x0d) {
-        raptor_iostream_counted_string_write("\\r", 2, iostr);
-        continue;
-      } else if(c < 0x20|| c == 0x7f) {
-        raptor_iostream_counted_string_write("\\u", 2, iostr);
-        raptor_iostream_hexadecimal_write(c, 4, iostr);
-        continue;
-      } else if(c < 0x80) {
-        raptor_iostream_write_byte(c, iostr);
-        continue;
-      }
-    } else if(c < 0x80) {
-      /* Turtle long string has no escapes except delim */
-      raptor_iostream_write_byte(c, iostr);
-      continue;
-    } 
-    
-    /* It is unicode */
-    
-    unichar_len = raptor_unicode_utf8_string_get_char(string, len, NULL);
-    if(unichar_len < 0 || RAPTOR_GOOD_CAST(size_t, unichar_len) > len)
-      /* UTF-8 encoding had an error or ended in the middle of a string */
-      return 1;
-
-    if(flags >= 1 && flags <= 3) {
-      /* Turtle and JSON are UTF-8 - no need to escape */
-      raptor_iostream_counted_string_write(string, unichar_len, iostr);
-    } else {
-      unichar_len = raptor_unicode_utf8_string_get_char(string, len, &unichar);
-      if(unichar_len < 0)
-        return 1;
-
-      if(unichar < 0x10000) {
-        raptor_iostream_counted_string_write("\\u", 2, iostr);
-        raptor_iostream_hexadecimal_write(RAPTOR_GOOD_CAST(unsigned int, unichar), 4, iostr);
-      } else {
-        raptor_iostream_counted_string_write("\\U", 2, iostr);
-        raptor_iostream_hexadecimal_write(RAPTOR_GOOD_CAST(unsigned int, unichar), 8, iostr);
-      }
-    }
-    
-    unichar_len--; /* since loop does len-- */
-    string += unichar_len; len -= unichar_len;
-
-  }
-
-  return 0;
-}
-
-
-/**
  * raptor_turtle_writer_quoted_counted_string:
  * @turtle_writer: Turtle writer object
  * @s: string to write
@@ -523,28 +375,32 @@ raptor_turtle_writer_quoted_counted_string(raptor_turtle_writer* turtle_writer,
                                            const unsigned char *s, size_t len)
 {
   const unsigned char *quotes = (const unsigned char *)"\"\"\"\"";
-  const unsigned char *q;
-  size_t q_len;
-  int flags;
+  const unsigned char *q = quotes + 2;
+  size_t q_len = 1;
+  int flags = RAPTOR_ESCAPED_WRITE_TURTLE_LITERAL;
   int rc = 0;
 
   if(!s)
     return 1;
   
   /* Turtle """longstring""" (2) or "string" (1) */
-  flags = raptor_turtle_writer_contains_newline(s) ? 2 : 1;
-  q = (flags == 2) ? quotes : quotes + 2;
-  q_len = (q == quotes) ? 3 : 1;
+  if(raptor_turtle_writer_contains_newline(s)) {
+    /* long string */
+    flags = RAPTOR_ESCAPED_WRITE_TURTLE_LONG_LITERAL;
+    q = quotes;
+    q_len = 3;
+  }
+
   raptor_iostream_counted_string_write(q, q_len, turtle_writer->iostr);
-  rc = raptor_string_python_write(s, strlen((const char*)s), '"', flags,
-                                  turtle_writer->iostr);
+  rc = raptor_string_escaped_write(s, strlen((const char*)s), '"', 
+                                   flags, turtle_writer->iostr);
   raptor_iostream_counted_string_write(q, q_len, turtle_writer->iostr);
 
   return rc;
 }
 
 
-/**
+/*
  * raptor_turtle_writer_literal:
  * @turtle_writer: Turtle writer object
  * @nstack: Namespace stack for making a QName for datatype URI
@@ -552,7 +408,7 @@ raptor_turtle_writer_quoted_counted_string(raptor_turtle_writer* turtle_writer,
  * @lang: language tag (may be NULL)
  * @datatype: datatype URI (may be NULL)
  *
- * Write a literal (possibly with lang and datatype) to the Turtle writer.
+ * INTERNAL - Write a literal (possibly with lang and datatype) to the Turtle writer.
  *
  * Return value: non-0 on failure
  **/
@@ -933,6 +789,84 @@ raptor_turtle_writer_bnodeid(raptor_turtle_writer* turtle_writer,
   raptor_bnodeid_ntriples_write(bnodeid, len,
                                 turtle_writer->iostr);
 }
+
+
+/**
+ * raptor_turtle_writer_uri:
+ * @turtle_writer: Turtle writer object
+ * @uri: uri
+ *
+ * Write a #raptor_uri to a turtle writer in qname or URI form
+ *
+ * Return value: non-0 on failure
+ */
+int
+raptor_turtle_writer_uri(raptor_turtle_writer* turtle_writer,
+                         raptor_uri* uri)
+{
+  raptor_qname* qname;
+  int rc = 0;
+
+  if(!uri)
+    return 1;
+
+  qname = raptor_new_qname_from_namespace_uri(turtle_writer->nstack, uri, 10);
+
+  /* XML Names allow leading '_' and '.' anywhere but Turtle does not */
+  if(qname && !raptor_turtle_is_legal_turtle_qname(qname)) {
+    raptor_free_qname(qname);
+    qname = NULL;
+  }
+
+  if(qname) {
+    raptor_turtle_writer_qname(turtle_writer, qname);
+    raptor_free_qname(qname);
+  } else {
+    rc = raptor_turtle_writer_reference(turtle_writer, uri);
+  }
+
+  return rc;
+}
+
+
+/**
+ * raptor_turtle_writer_term:
+ * @turtle_writer: Turtle writer object
+ * @term: term
+ *
+ * Write a #raptor_term to a turtle write
+ *
+ * Return value: non-0 on failure
+ */
+int
+raptor_turtle_writer_term(raptor_turtle_writer* turtle_writer,
+                          raptor_term* term)
+{
+  int rc = 0;
+
+  if(!term)
+    return 1;
+
+  if(term->type == RAPTOR_TERM_TYPE_URI) {
+    rc = raptor_turtle_writer_uri(turtle_writer, term->value.uri);
+  } else if(term->type == RAPTOR_TERM_TYPE_LITERAL) {
+    rc = raptor_turtle_writer_literal(turtle_writer,
+                                      turtle_writer->nstack,
+                                      term->value.literal.string,
+                                      term->value.literal.language, 
+                                      term->value.literal.datatype);
+  } else if(term->type == RAPTOR_TERM_TYPE_BLANK) {
+    rc = raptor_bnodeid_ntriples_write(term->value.blank.string,
+                                       term->value.blank.string_len,
+                                       turtle_writer->iostr);
+  } else {
+    rc = 2;
+  }
+  
+  return rc;
+}
+
+
 
 
 #endif
