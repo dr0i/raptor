@@ -78,6 +78,7 @@ struct raptor_turtle_parser_s {
   int trig;
 };
 
+int turtle_parser_lex (YYSTYPE *turtle_parser_lval, yyscan_t yyscanner);
 
 #ifdef __cplusplus
 }

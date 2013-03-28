@@ -49,7 +49,6 @@
 
 #include <turtle_parser.h>
 
-#define YY_DECL int turtle_lexer_lex (YYSTYPE *turtle_parser_lval, yyscan_t yyscanner)
 #define YY_NO_UNISTD_H 1
 #include <turtle_lexer.h>
 
@@ -82,21 +81,6 @@ const char * turtle_token_print(raptor_world* world, int token, YYSTYPE *lval);
 /* Prototypes */ 
 int turtle_parser_error(void* rdf_parser, const char *msg);
 
-/* Missing turtle_lexer.c/h prototypes */
-int turtle_lexer_get_column(yyscan_t yyscanner);
-/* Not used here */
-/* void turtle_lexer_set_column(int  column_no , yyscan_t yyscanner);*/
-
-
-/* What the lexer wants */
-extern int turtle_lexer_lex (YYSTYPE *turtle_parser_lval, yyscan_t scanner);
-
-/* Make lex/yacc interface as small as possible */
-#undef yylex
-#define yylex turtle_lexer_lex
-#define YYLEX_PARAM ((raptor_turtle_parser*)(((raptor_parser*)rdf_parser)->context))->scanner
-
-
 /* Prototypes for local functions */
 static void raptor_turtle_generate_statement(raptor_parser *parser, raptor_statement *triple);
 
@@ -105,12 +89,23 @@ static void raptor_turtle_generate_statement(raptor_parser *parser, raptor_state
 
 /* directives */
 
+/* equivalent to -d option */
+
+
+%defines
+
+%file-prefix "turtle_parser"
+
+%name-prefix "turtle_parser_"
 
 /* Pure parser - want a reentrant parser  */
-%define api.pure
+%define api.pure full
 
 /* Push or pull parser? */
 %define api.push_pull "pull"
+
+/* lexer argument */
+%lex-param { raptor_parser* rdf_parser }
 
 /* Pure parser argument */
 %parse-param { raptor_parser* rdf_parser }

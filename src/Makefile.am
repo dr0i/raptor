@@ -221,7 +221,7 @@ turtle_lexer.c: $(srcdir)/turtle_lexer.l turtle_parser.c $(top_srcdir)/scripts/f
 turtle_lexer.h: turtle_lexer.c ; @exit 0
 
 turtle_parser.c: $(srcdir)/turtle_parser.y $(top_srcdir)/scripts/fix-bison
-	$(YACC) -b turtle_parser -p turtle_parser_ -d -v $(srcdir)/turtle_parser.y
+	$(YACC) -Wall -v $(srcdir)/turtle_parser.y
 	$(PERL) $(top_srcdir)/scripts/fix-bison turtle_parser.tab.c > $@
 	mv -f turtle_parser.tab.h turtle_parser.h
 	rm -f turtle_parser.tab.c
